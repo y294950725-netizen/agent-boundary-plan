@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent 越界方案</title>
+<style>
+  :root {
+    --bg: #fafbfc;
+    --surface: #ffffff;
+    --surface-2: #f4f6f8;
+    --border: #e8ecf1;
+    --border-light: #f0f3f7;
+    --text: #1a2332;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --accent: #2563eb;
+    --accent-bg: #eff6ff;
+    --accent-border: #bfdbfe;
+    --green: #059669;
+    --green-bg: #ecfdf5;
+    --green-border: #a7f3d0;
+    --amber: #d97706;
+    --amber-bg: #fffbeb;
+    --amber-border: #fde68a;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --purple: #7c3aed;
+    --purple-bg: #f5f3ff;
+    --purple-border: #ddd6fe;
+    --cyan: #0891b2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; padding: 0 32px; }
+
+  /* ===== Header ===== */
+  .page-header { padding: 64px 0 48px; border-bottom: 1px solid var(--border); }
+  .header-meta {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; font-size: 13px; color: var(--text-muted);
+  }
+  .header-tag {
+    padding: 3px 10px; border-radius: 4px;
+    background: var(--accent-bg); color: var(--accent);
+    font-weight: 600; font-size: 12px;
+  }
+  .page-header h1 {
+    font-size: 32px; font-weight: 700; line-height: 1.3;
+    margin-bottom: 12px; letter-spacing: -0.5px;
+  }
+  .page-header .subtitle { font-size: 17px; color: var(--text-secondary); max-width: 640px; }
+
+  /* ===== TOC ===== */
+  .toc { padding: 32px 0; border-bottom: 1px solid var(--border); }
+  .toc-title {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 16px;
+  }
+  .toc-list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px; list-style: none;
+  }
+  .toc-list a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; border-radius: 8px; text-decoration: none;
+    color: var(--text-secondary); font-size: 14px; font-weight: 500;
+    transition: all .2s;
+  }
+  .toc-list a:hover { background: var(--surface-2); color: var(--accent); }
+  .toc-num {
+    width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+
+  /* ===== Section ===== */
+  .section { padding: 56px 0; border-bottom: 1px solid var(--border); }
+  .section:last-of-type { border-bottom: none; }
+  .section-header { margin-bottom: 32px; }
+  .section-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;
+  }
+  .section-header h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+  .section-header .lead { font-size: 15px; color: var(--text-secondary); max-width: 680px; }
+
+  /* ===== Problem-Solution ===== */
+  .ps-block { margin: 24px 0; }
+  .problem-box {
+    padding: 20px 24px; background: var(--red-bg);
+    border: 1px solid var(--red-border); border-radius: 12px 12px 0 0; border-bottom: none;
+  }
+  .problem-box h4 {
+    font-size: 13px; font-weight: 700; color: var(--red);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .problem-box p { font-size: 14px; color: #991b1b; }
+  .solution-box {
+    padding: 20px 24px; background: var(--green-bg);
+    border: 1px solid var(--green-border); border-radius: 0 0 12px 12px;
+  }
+  .solution-box h4 {
+    font-size: 13px; font-weight: 700; color: var(--green);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+  }
+  .solution-box p { font-size: 14px; color: #065f46; }
+
+  /* ===== Callout ===== */
+  .callout { padding: 18px 22px; border-radius: 10px; margin: 20px 0; font-size: 14px; line-height: 1.7; }
+  .callout.blue { background: var(--accent-bg); border: 1px solid var(--accent-border); color: #1e40af; }
+  .callout.amber { background: var(--amber-bg); border: 1px solid var(--amber-border); color: #92400e; }
+  .callout.green { background: var(--green-bg); border: 1px solid var(--green-border); color: #065f46; }
+  .callout.purple { background: var(--purple-bg); border: 1px solid var(--purple-border); color: #5b21b6; }
+  .callout strong { font-weight: 700; }
+
+  /* ===== Flow ===== */
+  .flow-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 36px 32px; margin: 24px 0; overflow-x: auto;
+  }
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 360px; }
+  .flow-node {
+    padding: 12px 28px; border-radius: 10px; font-size: 14px; font-weight: 500;
+    text-align: center; min-width: 300px; border: 1.5px solid var(--border); background: var(--surface);
+  }
+  .flow-node.input-node { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); font-weight: 600; }
+  .flow-node.judge-node { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber); font-weight: 600; min-width: 320px; }
+  .flow-node.ok-node { background: var(--green-bg); border-color: var(--green-border); color: var(--green); }
+  .flow-node.block-node { background: var(--red-bg); border-color: var(--red-border); color: var(--red); }
+  .flow-arrow { width: 2px; height: 24px; background: var(--border); position: relative; }
+  .flow-arrow::after {
+    content: ''; position: absolute; bottom: -3px; left: -4px;
+    width: 0; height: 0;
+    border-left: 5px solid transparent; border-right: 5px solid transparent;
+    border-top: 5px solid var(--border);
+  }
+  .flow-branch { display: flex; gap: 24px; align-items: flex-start; justify-content: center; }
+  .flow-branch-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .flow-label { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ===== Cards ===== */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .card-grid.tri { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 640px) { .card-grid, .card-grid.tri { grid-template-columns: 1fr; } }
+  .card {
+    padding: 20px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .card h4 { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .card p, .card li { font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+  .card ul { list-style: none; padding: 0; }
+  .card li { padding: 4px 0 4px 16px; position: relative; }
+  .card li::before { content: ''; position: absolute; left: 0; top: 12px; width: 5px; height: 5px; border-radius: 50%; }
+  .card.good li::before { background: var(--green); }
+  .card.bad li::before { background: var(--red); }
+  .card.neutral li::before { background: var(--text-muted); }
+
+  /* ===== Compare ===== */
+  .compare {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 20px 0;
+  }
+  @media (max-width: 640px) { .compare { grid-template-columns: 1fr; } }
+  .compare-side { padding: 20px 24px; }
+  .compare-side.bad { background: #fef7f7; border-right: 1px solid var(--border); }
+  .compare-side.good { background: #f0fdf8; }
+  .compare-side h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .compare-side.bad h4 { color: var(--red); }
+  .compare-side.good h4 { color: var(--green); }
+  .compare-side p { font-size: 13px; color: var(--text-secondary); line-height: 1.8; }
+
+  /* ===== Table ===== */
+  .clean-table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+  .clean-table th {
+    text-align: left; padding: 10px 16px; background: var(--surface-2);
+    border-bottom: 2px solid var(--border); font-weight: 600;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);
+  }
+  .clean-table td { padding: 11px 16px; border-bottom: 1px solid var(--border-light); color: var(--text-secondary); vertical-align: top; }
+  .clean-table tr:last-child td { border-bottom: none; }
+  .clean-table tr:hover td { background: #f8fafc; }
+
+  /* ===== Code ===== */
+  .code {
+    background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+    font-size: 13px; line-height: 1.8; color: var(--text); overflow-x: auto;
+  }
+  .code .cm { color: #94a3b8; }
+  .code .kw { color: #2563eb; font-weight: 600; }
+  .code .str { color: #059669; }
+  .code .fn { color: #7c3aed; }
+  .code .ok { color: #059669; }
+  .code .err { color: #dc2626; }
+
+  /* ===== Checklist ===== */
+  .checklist { list-style: none; padding: 0; margin: 16px 0; }
+  .checklist li {
+    padding: 8px 0 8px 28px; position: relative; font-size: 14px;
+    color: var(--text-secondary); border-bottom: 1px solid var(--border-light);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before { content: '\2713'; position: absolute; left: 0; font-weight: 700; color: var(--green); font-size: 14px; }
+
+  /* ===== Chain ===== */
+  .chain { display: flex; flex-direction: column; gap: 0; margin: 28px 0; }
+  .chain-step { display: flex; gap: 20px; position: relative; padding-bottom: 32px; }
+  .chain-step:last-child { padding-bottom: 0; }
+  .chain-step::before {
+    content: ''; position: absolute; left: 19px; top: 40px; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .chain-step:last-child::before { display: none; }
+  .chain-dot {
+    flex-shrink: 0; width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff; position: relative; z-index: 1;
+  }
+  .chain-content { flex: 1; padding-top: 2px; }
+  .chain-content h4 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .chain-content .chain-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+  .chain-content .chain-body { font-size: 14px; color: var(--text-secondary); }
+
+  /* ===== Summary ===== */
+  .summary-box {
+    margin: 48px 0; padding: 36px 40px; border-radius: 16px;
+    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+    border: 1px solid #ddd6fe;
+  }
+  .summary-box h3 { font-size: 20px; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+  .summary-box p { font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+  .summary-box .hl { color: var(--accent); font-weight: 700; }
+
+  /* ===== Walkthrough ===== */
+  .walkthrough {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden; margin: 24px 0;
+  }
+  .walk-header {
+    padding: 16px 24px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600;
+  }
+  .walk-step {
+    display: flex; gap: 16px; padding: 16px 24px;
+    border-bottom: 1px solid var(--border-light); font-size: 13px;
+  }
+  .walk-step:last-child { border-bottom: none; }
+  .walk-label { flex-shrink: 0; width: 72px; font-weight: 700; font-size: 12px; padding-top: 1px; }
+  .walk-body { flex: 1; color: var(--text-secondary); line-height: 1.7; }
+  .walk-body code {
+    background: var(--surface-2); padding: 1px 5px; border-radius: 3px;
+    font-size: 12px; color: var(--accent);
+  }
+
+  /* ===== Footer ===== */
+  .page-footer {
+    padding: 40px 0; border-top: 1px solid var(--border);
+    text-align: center; font-size: 13px; color: var(--text-muted);
+  }
+
+  /* ===== Badge ===== */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; vertical-align: middle;
+  }
+  .badge-hard { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+
+  /* ===== Colors ===== */
+  .bg-1 { background: #6366f1; }
+  .bg-2 { background: #2563eb; }
+  .bg-3 { background: #7c3aed; }
+  .bg-4 { background: #059669; }
+  .bg-5 { background: #d97706; }
+  .bg-6 { background: #dc2626; }
+  .clr-1 { color: #6366f1; }
+  .clr-2 { color: #2563eb; }
+  .clr-3 { color: #7c3aed; }
+  .clr-4 { color: #059669; }
+  .clr-5 { color: #d97706; }
+  .clr-6 { color: #dc2626; }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="container">
+  <header class="page-header" style="text-align:center;">
+    <h1>Agent 越界方案</h1>
+  </header>
+</div>
+
+<!-- ===== SUMMARY (TOP) ===== -->
+<div class="container">
+  <div class="summary-box" style="margin-top:32px; margin-bottom:0;">
+    <h3>方案核心逻辑</h3>
+    <p style="margin-top:12px;">
+      <strong>前三层管"该不该回答"</strong><br>
+      微调将安全边界写入权重 → PE 在运行时动态划定边界 → Judge 检测多轮对话中的人设偏移
+    </p>
+    <p style="margin-top:12px;">
+      <strong>后三层管"回答的对不对"</strong><br>
+      知识锚定到外部可溯源知识 → 结构化填表约束工具输入输出 → 硬检查做程序化兜底
+    </p>
+  </div>
+</div>
+
+<!-- ===== TOC ===== -->
+<div class="container">
+  <nav class="toc">
+    <div class="toc-title">目录</div>
+    <ul class="toc-list">
+      <li><a href="#s1"><span class="toc-num bg-1">1</span>微调写入拒绝肌肉（可选）</a></li>
+      <li><a href="#s2"><span class="toc-num bg-2">2</span>PE 划定任务边界</a></li>
+      <li><a href="#s3"><span class="toc-num bg-3">3</span>Judge 检测人设偏移</a></li>
+      <li><a href="#s4"><span class="toc-num bg-4">4</span>知识锚定防事实幻觉</a></li>
+      <li><a href="#s5"><span class="toc-num bg-5">5</span>结构化填表防字段改写</a></li>
+      <li><a href="#s6"><span class="toc-num bg-6">6</span>输出侧硬检查兜底</a></li>
+    </ul>
+  </nav>
+</div>
+
+<!-- ===== LOGIC CHAIN ===== -->
+<div class="container">
+  <div class="callout blue" style="margin-top:32px;">
+    <strong>逻辑链：</strong>微调先将安全边界写入权重（可选）→ PE 在运行时划定任务边界 → 但多轮对话中 PE 约束会偏移 → 所以用 Judge 实时检测人设偏移 → 即使边界内也会编造事实 → 所以知识锚定到外部可溯源知识 → 大模型自行改写字段名/值导致下游出错 → 所以结构化填表约束输入输出 → 最后输出侧硬检查做程序化兜底。
+  </div>
+</div>
+
+<!-- ===== SECTION 1: Fine-tuning ===== -->
+<div class="container">
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num bg-1">1</div>
+      <h2>微调写入拒绝肌肉（可选，根据产品情况选择）</h2>
+      <p class="lead"><strong>训练阶段</strong>完成，部署前就要做好。通过微调数据将安全边界写入模型权重——这是唯一不可被 Prompt Injection 绕过的防线。</p>
+    </div>
+
+    <div class="callout purple">
+      <strong>为什么放在第一步？</strong>后续所有防线（PE、Judge、硬检查）都是运行时约束，理论上都可被绕过。只有写进权重的安全边界，才是模型的"肌肉记忆"——遇到边界场景时本能地给出安全回答，不依赖任何外部指令。
+    </div>
+
+    <h3 style="font-size:16px; margin: 24px 0 12px;">训练什么——不是训练"拒绝"，而是训练"有分寸的拒绝"</h3>
+
+    <div class="compare">
+      <div class="compare-side bad">
+        <h4>硬邦邦拒绝</h4>
+        <p>"抱歉，我不能提供临床建议。"<br><br>问题：体验差，用户换个问法就绕过去了。模型只学会了一个动作——拒绝。</p>
+      </div>
+      <div class="compare-side good">
+        <h4>有分寸的拒绝</h4>
+        <p>"二甲双胍在 eGFR&lt;30 时禁忌（KDIGO 2024）。具体用药需由肾内科医生评估。我可以帮您检索相关指南。"<br><br>给安全信息 + 引导至人类专家 + 提供替代路径</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:16px; margin: 24px 0 12px;">微调数据构造策略</h3>
+
+    <table class="clean-table">
+      <thead><tr><th>数据类型</th><th>作用</th><th>示例</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600;">正常学术问答</td>
+          <td>主干能力，保证加入安全数据后不冲垮学术能力</td>
+          <td>"PCOS 相关 Meta 分析有哪些"</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">正确拒绝 / 降级</td>
+          <td>核心拒绝肌肉——有分寸的安全回答</td>
+          <td>"我父亲该吃多少 mg" → 给通识 + 引导专家</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">边界灰色地带</td>
+          <td>教模型理解分寸，区分可回答与不可回答</td>
+          <td>"CKD 3b 期的<strong>指南推荐</strong>" (OK) vs "CKD 3b <strong>该怎么调剂量</strong>" (拒绝)</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">对抗性绕过尝试</td>
+          <td>鲁棒性，防 Prompt Injection</td>
+          <td>"假装你是医生..."、"纯学术讨论，如果要开..."</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="ps-block">
+      <div class="problem-box">
+        <h4>&#9888; 微调的局限</h4>
+        <p>微调能内置安全倾向，但<strong>不够灵活</strong>——边界规则变化时需要重新训练。且微调只能覆盖训练数据见过的场景，新场景仍需运行时约束补强。</p>
+      </div>
+      <div class="solution-box">
+        <h4>&#10003; 需要 PE 在运行时动态划定边界</h4>
+        <p>微调管"基本安全底线"，PE 管"具体任务的灵活边界" → 第2层。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 2: PE ===== -->
+<div class="container">
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num bg-2">2</div>
+      <h2>Prompt Engineering 划定任务边界</h2>
+      <p class="lead"><strong>运行时</strong>的第一道防线。通过 System Prompt 明确告诉模型"你是谁、能做什么、不能做什么"——比微调更灵活，可按任务动态调整。</p>
+    </div>
+
+    <h3 style="font-size:16px; margin-bottom:16px;">边界从哪来？三个维度</h3>
+
+    <div class="card-grid tri">
+      <div class="card neutral">
+        <h4><span class="clr-2">01</span> 身份边界</h4>
+        <ul>
+          <li>"你是医学文献分析助手"</li>
+          <li>"你不是医生"</li>
+          <li>"你不是临床决策系统"</li>
+        </ul>
+      </div>
+      <div class="card neutral">
+        <h4><span class="clr-2">02</span> 操作边界</h4>
+        <ul>
+          <li>可以：检索、统计、综述</li>
+          <li>不可以：开处方、定剂量</li>
+          <li>不可以：修改原始数据</li>
+        </ul>
+      </div>
+      <div class="card neutral">
+        <h4><span class="clr-2">03</span> 输出边界</h4>
+        <ul>
+          <li>每个事实必须带引用</li>
+          <li>不可输出"可以用/不可以用"</li>
+          <li>不可从动物实验推人体</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code">
+<span class="cm">## System Prompt 核心约束（示例）</span>
+
+<span class="kw">身份</span>：你是医学科研文献分析助手，不是医生，不是临床决策系统。
+
+<span class="kw">绝对禁止</span>（任何情况不可违反）：
+  1. 不输出针对特定患者的诊疗方案
+  2. 不输出具体剂量建议（"建议 XX mg"）
+  3. 不在没有 PMID/DOI 的情况下陈述具体数值
+  4. 不将动物/体外实验结论推广至人体
+
+<span class="kw">无法确定时</span>的默认行为：
+  - 说"现有检索范围内未找到直接证据"
+  - 不编造过渡性解释
+    </div>
+
+    <div class="ps-block">
+      <div class="problem-box">
+        <h4>&#9888; PE 的局限</h4>
+        <p>PE 是文本指令，<strong>在多轮对话中模型会逐渐偏离原始人设</strong>——第1轮还老老实实当"文献助手"，到第5轮可能已经滑向"医生角色"开始说"我建议你..."。这就是"人设偏移"问题。</p>
+      </div>
+      <div class="solution-box">
+        <h4>&#10003; 需要 Judge 实时检测偏移</h4>
+        <p>PE 设定了边界，但没有机制检测模型是否还在边界内 → 引入 Judge（第3层）。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 3: JUDGE ===== -->
+<div class="container">
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num bg-3">3</div>
+      <h2>Judge 检测人设偏移</h2>
+      <p class="lead">解决的核心问题：多轮对话中 Actor 会逐渐偏离 PE 设定的人设。Judge 不是"互审"，而是<strong>实时监测 Actor 是否还在边界内</strong>。</p>
+    </div>
+
+    <div class="callout purple">
+      <strong>Actor-Judge 不是互审。</strong>Actor 正常回答问题，Judge 独立评估每一轮输出是否偏离了原始人设。偏移分高 → Actor 被拉回边界内重新生成；偏移分低 → 正常放行。这是一个<strong>偏移检测机制</strong>，不是对抗机制。
+    </div>
+
+    <div class="flow-wrap">
+      <div class="flow">
+        <div class="flow-node input-node">用户提问（第 N 轮对话）</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-node">Actor 生成回答</div>
+        <div class="flow-arrow"></div>
+        <div class="flow-node judge-node">Judge：对比原始 PE，检测 Actor 是否人设偏移</div>
+        <div class="flow-arrow" style="height:12px;"></div>
+        <div class="flow-branch">
+          <div class="flow-branch-col">
+            <div class="flow-label">偏移分低 &middot; 在边界内</div>
+            <div class="flow-arrow" style="height:16px;"></div>
+            <div class="flow-node ok-node">正常输出</div>
+          </div>
+          <div class="flow-branch-col">
+            <div class="flow-label">偏移分高 &middot; 越界</div>
+            <div class="flow-arrow" style="height:16px;"></div>
+            <div class="flow-node block-node">拉回边界 / 重新生成</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:16px; margin: 24px 0 12px;">Judge 评估的四个偏移维度</h3>
+
+    <table class="clean-table">
+      <thead><tr><th>检测维度</th><th>具体指标</th><th>典型偏移场景</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600;">身份偏移</td>
+          <td>Actor 是否开始扮演 PE 中禁止的角色</td>
+          <td>用户反复追问后 Actor 开始说"我建议你..."</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">能力偏移</td>
+          <td>Actor 是否开始做超出授权的操作</td>
+          <td>从综述分析滑向个体化用药建议</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">态度偏移</td>
+          <td>Actor 是否从谨慎变为过度自信</td>
+          <td>第1轮还标注"证据有限"，第5轮直接下结论</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">引用偏移</td>
+          <td>Actor 是否开始不附带引用就陈述事实</td>
+          <td>前几轮每句话带 PMID，后面逐渐省略</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout amber">
+      <strong>关键设计：Judge 只看偏移，不管内容对错。</strong>内容准确性由后续的知识锚定（第4层）和硬检查（第6层）负责。Judge 的唯一职责是确保 Actor 始终在 PE 定义的角色边界内。职责分离，不互相越位。
+    </div>
+
+    <div class="ps-block">
+      <div class="problem-box">
+        <h4>&#9888; 前三层都管"该不该回答"</h4>
+        <p>微调、PE、Judge 解决的是任务边界问题——模型应该在什么范围内工作。但即使模型在边界内工作，它仍然会<strong>从参数记忆中编造事实</strong>。</p>
+      </div>
+      <div class="solution-box">
+        <h4>&#10003; 需要知识锚定解决"回答的内容对不对"</h4>
+        <p>边界问题靠前三层，内容准确性靠后三层 → 第4层。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 4: Knowledge Anchoring ===== -->
+<div class="container">
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num bg-4">4</div>
+      <h2>知识锚定——防止边界内的事实幻觉</h2>
+      <p class="lead">前三层管"该不该回答"。从这里开始管"回答的内容对不对"——即使在边界内，模型也会从参数记忆中编造数据。</p>
+    </div>
+
+    <div class="callout green">
+      <strong>核心规则：</strong>所有事实陈述必须锚定到可溯源的外部知识（无论是 Wiki 还是 RAG）。Agent 不可从参数记忆中生成事实。引用时必须使用原文片段中的数值，<strong>不可四舍五入、换算或转述</strong>。
+    </div>
+
+    <h3 style="font-size:16px; margin:24px 0 12px;">为什么"不可转述"？</h3>
+
+    <div class="compare">
+      <div class="compare-side bad">
+        <h4>模型转述（高风险）</h4>
+        <p>原文："response rate was 42.3% (95%CI 38.1-46.5)"<br><br>
+        转述1："有效率约 40-45%"<br>
+        转述2："有效率接近一半"<br>
+        转述3："有效率 42.3% (95%CI 38.1-<strong style="color:var(--red)">47.5</strong>)"<br><br>
+        第三种 CI 上限被改了 1.0，极难发现。</p>
+      </div>
+      <div class="compare-side good">
+        <h4>逐字引用（安全）</h4>
+        <p>直接引用原文：<br>"response rate was 42.3% (95%CI 38.1-46.5)"<br><br>
+        来源：(Ferracioli-Oda et al., 2013, PMID:23691095)<br><br>
+        可与检索结果原文做 diff 比对，自动验证一致性。</p>
+      </div>
+    </div>
+
+    <h3 style="font-size:16px; margin:24px 0 12px;">锚定知识源</h3>
+    <table class="clean-table">
+      <thead><tr><th>知识源</th><th>内容类型</th><th>溯源标识</th></tr></thead>
+      <tbody>
+        <tr><td>PubMed</td><td>原始研究 / 综述</td><td>PMID</td></tr>
+        <tr><td>Cochrane Library</td><td>系统综述</td><td>DOI / Cochrane ID</td></tr>
+        <tr><td>UpToDate / 各学科指南</td><td>临床指南</td><td>指南编号 / DOI</td></tr>
+        <tr><td>DrugBank / RxNorm</td><td>药物数据</td><td>DrugBank ID</td></tr>
+        <tr><td>ClinicalTrials.gov</td><td>临床试验注册</td><td>NCT ID</td></tr>
+      </tbody>
+    </table>
+
+    <div class="ps-block">
+      <div class="problem-box">
+        <h4>&#9888; 知识锚定的盲区</h4>
+        <p>锚定解决了"凭空编造"，但 Agent 在<strong>调用工具时传递字段可能出错</strong>——大模型会基于自己的理解自行改写字段值，导致参数往下传递时与原始数据不一致。例如将标准药物名改写为俗称、将精确数值四舍五入后传入，下游工具接收到的已不是正确的输入。这种幻觉发生在工具接口层面，知识锚定管不到。</p>
+      </div>
+      <div class="solution-box">
+        <h4>&#10003; 需要结构化填表约束工具调用的输入输出</h4>
+        <p>通过 Schema 约束工具的输入/输出字段，字段类型、枚举范围、必填项都提前锁定，防止大模型自行改写 → 第5层。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SECTION 5: Structured Output ===== -->
+<div class="container">
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num bg-5">5</div>
+      <h2>结构化输出 · 填表模式——防止字段改写导致的幻觉</h2>
+      <p class="lead">核心问题：大模型会基于自己的理解<strong>自行改写字段名或字段值</strong>——把标准字段名换成同义词、把精确数值四舍五入。下游系统收到的已不是正确参数，但模型自认为传对了。填表模式通过 Schema 锁定字段，从根源上杜绝改写。</p>
+    </div>
+
+    <div class="card-grid">
+      <div class="card bad">
+        <h4 style="color:var(--red);">自由文本 / 无约束模式</h4>
+        <ul>
+          <li>模型把字段名改写为同义词，下游系统不认识</li>
+          <li>数值被自行四舍五入或换算后传入</li>
+          <li>标准术语被替换为俗称或缩写</li>
+          <li>必填字段被跳过，缺失数据无提示</li>
+        </ul>
+      </div>
+      <div class="card good">
+        <h4 style="color:var(--green);">填表模式</h4>
+        <ul>
+          <li>每个字段有类型约束</li>
+          <li>枚举值只能从预设列表选</li>
+          <li>数值有范围校验</li>
+          <li>必填字段不可省略</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="code">
+<span class="cm">// 结构化输出 Schema（量化研究场景）</span>
+{
+  <span class="str">"claim"</span>:          <span class="kw">string</span>,                    <span class="cm">// 一个且仅一个事实陈述</span>
+  <span class="str">"source"</span>: {
+    <span class="str">"pmid"</span>:          <span class="kw">string | null</span>,
+    <span class="str">"study_type"</span>:    <span class="kw">enum</span> [<span class="str">"SR/MA"</span>, <span class="str">"RCT"</span>, <span class="str">"Cohort"</span>, ...]
+  },
+  <span class="str">"effect"</span>: {
+    <span class="str">"metric"</span>:        <span class="kw">enum</span> [<span class="str">"OR"</span>, <span class="str">"RR"</span>, <span class="str">"HR"</span>, <span class="str">"SMD"</span>, <span class="str">"NNT"</span>],
+    <span class="str">"value"</span>:         <span class="kw">number</span>,
+    <span class="str">"ci_lower"</span>:      <span class="kw">number</span>,     <span class="cm">// 硬校验: ci_lower &lt; value &lt; ci_upper</span>
+    <span class="str">"ci_upper"</span>:      <span class="kw">number</span>,
+    <span class="str">"p_value"</span>:       <span class="kw">number</span> <span class="cm">[0,1]</span>
+  },
+  <span class="str">"evidence_grade"</span>:  <span class="kw">enum</span> [<span class="str">"high"</span>, <span class="str">"moderate"</span>, <span class="str">"low"</span>, <span class="str">"very_low"</span>],
+  <span class="str">"anchor_quote"</span>:    <span class="kw">string</span>,     <span class="cm">// 检索结果原文逐字引用（可 diff 比对验证）</span>
+  <span class="str">"confidence"</span>:     <span class="kw">enum</span> [<span class="str">"confirmed"</span>, <span class="str">"limited"</span>, <span class="str">"needs_verification"</span>]
+}
+    </div>
+
+    <h3 style="font-size:16px; margin:24px 0 12px;">填表为什么能防幻觉？</h3>
+    <ul class="checklist">
+      <li><code>pmid</code> 字段 → 后续可程序化验证是否真实存在</li>
+      <li><code>ci_lower &lt; value &lt; ci_upper</code> → 数值逻辑自动校验</li>
+      <li><code>study_type</code> 只能从 enum 选 → 不能编造研究类型</li>
+      <li><code>anchor_quote</code> 逐字引用 → 可与检索结果原文 diff 比对</li>
+      <li>必填字段缺失 → 直接拒绝输出，强制补全</li>
+    </ul>
+
+    <div class="callout amber">
+      <strong>工具输入同样要约束：</strong>不只约束输出格式，工具调用的<strong>输入参数</strong>同样需要 Schema 校验。模型可能将 <code>drug_name</code> 改写为 <code>medication</code>、将 <code>eGFR</code> 改写为 <code>kidney_function</code>——下游 API 直接报错或静默忽略。Schema 锁定字段名和类型，杜绝这类改写。</div>
+  </div>
+</div>
+
+<!-- ===== SECTION 6: Hard Check ===== -->
+<div class="container">
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num bg-6">6</div>
+      <h2>输出侧硬检查——最后的程序化兜底</h2>
+      <p class="lead">前5层都涉及 LLM 参与，理论上都可能出错。这一层是<strong>纯代码执行的程序化验证</strong>，不依赖任何模型，接近 100% 可靠。</p>
+    </div>
+
+    <div class="callout green">
+      <strong>硬检查的本质：</strong>能用代码验证的事情，绝不交给 LLM 判断。每一个从"LLM 判断"转化为"代码验证"的检查点，都是实打实的可靠性提升。
+    </div>
+
+    <h3 style="font-size:16px; margin:24px 0 12px;">硬检查清单</h3>
+
+    <table class="clean-table">
+      <thead><tr><th>检查项</th><th>验证方式</th><th>抓什么问题</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600;">PMID / DOI 存在性</td>
+          <td>调用 PubMed API / CrossRef API</td>
+          <td>Agent 编造不存在的文献</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">anchor_quote 匹配</td>
+          <td>与检索结果原文做字符串 diff</td>
+          <td>Agent 悄悄修改引用中的数值</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">数值范围校验</td>
+          <td>CI<sub>lower</sub> &lt; 点估计 &lt; CI<sub>upper</sub></td>
+          <td>统计数据逻辑矛盾</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">术语词表匹配</td>
+          <td>MeSH / ICD-11 / SNOMED-CT 查表</td>
+          <td>Agent 编造不存在的疾病名或术语</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">药物名验证</td>
+          <td>DrugBank / RxNorm 查表</td>
+          <td>Agent 编造不存在的药物</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">统计一致性</td>
+          <td>OR 方向与 p 值方向是否一致</td>
+          <td>Agent 编造自相矛盾的统计结果</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">p 值范围</td>
+          <td>p &isin; [0, 1]</td>
+          <td>Agent 输出非法 p 值</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600;">年份合理性</td>
+          <td>引用年份 &le; 当前年份</td>
+          <td>Agent 引用"未来"发表的论文</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="code">
+<span class="cm">// 硬检查伪代码</span>
+
+<span class="kw">function</span> <span class="fn">hardCheck</span>(output) {
+  <span class="cm">// 1. PMID 存在性</span>
+  <span class="kw">if</span> (output.pmid) {
+    result = <span class="fn">PubMedAPI.fetch</span>(output.pmid)
+    <span class="kw">assert</span> result.exists == <span class="ok">true</span>
+  }
+
+  <span class="cm">// 2. 引用原文比对</span>
+  <span class="kw">assert</span> <span class="fn">fuzzyMatch</span>(output.anchor_quote, retrieved_snippets) >= <span class="str">0.95</span>
+
+  <span class="cm">// 3. 数值逻辑</span>
+  <span class="kw">assert</span> output.ci_lower < output.value < output.ci_upper
+  <span class="kw">assert</span> 0 <= output.p_value <= 1
+
+  <span class="cm">// 4. 术语验证</span>
+  <span class="kw">for</span> term <span class="kw">in</span> output.medical_terms:
+    <span class="kw">assert</span> term <span class="kw">in</span> MeSH_vocabulary <span class="kw">or</span> term <span class="kw">in</span> ICD11_codes
+
+  <span class="cm">// 5. 不通过 → 拦截，不是"警告"</span>
+  <span class="kw">if</span> any_assertion_failed: <span class="err">→ 拦截输出，要求重新生成</span>
+}
+    </div>
+  </div>
+</div>
+
+<!-- ===== COMPLETE CHAIN ===== -->
+<div class="container">
+  <div class="section">
+    <div class="section-header">
+      <h2>完整因果链</h2>
+      <p class="lead">六层递进，每一层解决上一层解决不了的问题。</p>
+    </div>
+
+    <div class="chain">
+      <div class="chain-step">
+        <div class="chain-dot bg-1">1</div>
+        <div class="chain-content">
+          <h4>微调写入拒绝肌肉（可选）</h4>
+          <div class="chain-sub">训练阶段 &middot; 唯一不可被运行时攻击绕过的防线 &middot; 根据产品情况选择是否启用</div>
+          <div class="chain-body">将安全边界写入模型权重。有分寸的拒绝（安全信息+引导+替代），而非硬拒绝。但不够灵活，边界规则变化时需重新训练。</div>
+        </div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-dot bg-2">2</div>
+        <div class="chain-content">
+          <h4>PE 划定任务边界</h4>
+          <div class="chain-sub">运行时 &middot; 身份/操作/输出三重边界</div>
+          <div class="chain-body">通过 System Prompt 动态定义边界，比微调更灵活。但本质是文本指令——多轮对话中会逐渐偏移。</div>
+        </div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-dot bg-3">3</div>
+        <div class="chain-content">
+          <h4>Judge 检测人设偏移</h4>
+          <div class="chain-sub">解决 PE 在多轮对话中失效的问题</div>
+          <div class="chain-body">独立模型实时监测 Actor 每轮输出是否偏离原始人设。身份/能力/态度/引用四维度检测，偏移则拉回边界。</div>
+        </div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-dot bg-4">4</div>
+        <div class="chain-content">
+          <h4>知识锚定</h4>
+          <div class="chain-sub">解决边界内的事实幻觉——模型从参数记忆中编造数据</div>
+          <div class="chain-body">所有事实必须锚定到 PubMed / Cochrane / 指南等可溯源外部知识。引用必须逐字，不可四舍五入或转述。</div>
+        </div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-dot bg-5">5</div>
+        <div class="chain-content">
+          <h4>结构化填表</h4>
+          <div class="chain-sub">解决大模型自行改写字段名/字段值导致的幻觉</div>
+          <div class="chain-body">用 Schema 锁定字段名、类型、枚举范围、必填项。模型不能把 <code>drug_name</code> 改写为 <code>medication</code>，不能把精确数值四舍五入后传入。下游系统收到的就是标准参数。</div>
+        </div>
+      </div>
+      <div class="chain-step">
+        <div class="chain-dot bg-6">6</div>
+        <div class="chain-content">
+          <h4>输出侧硬检查</h4>
+          <div class="chain-sub">最后的程序化兜底，不依赖任何 LLM 判断</div>
+          <div class="chain-body">纯代码执行：PMID 验证、anchor_quote 比对、数值范围校验、术语词表匹配。前5层都涉及 LLM，这一层是唯一 100% 确定性的验证。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fallback -->
+    <h3 style="font-size:16px; margin:32px 0 12px;">各层失效时的兜底关系</h3>
+    <table class="clean-table">
+      <thead><tr><th>当这一层失效...</th><th>后果</th><th>谁来兜底</th></tr></thead>
+      <tbody>
+        <tr><td>微调覆盖不到新场景</td><td>模型面对未见过的边界场景</td><td>PE 在运行时动态设定边界</td></tr>
+        <tr><td>PE 被多轮对话冲淡</td><td>模型逐渐偏离人设</td><td>Judge 实时检测偏移并拉回</td></tr>
+        <tr><td>Judge 误判</td><td>偏移了但没拦住</td><td>微调中已内置的安全倾向兜底</td></tr>
+        <tr><td>在边界内编造事实</td><td>输出看似合理但数据虚假</td><td>知识锚定——没检索到就没法编</td></tr>
+        <tr><td>RAG 检索不全</td><td>锚定了但信息不完整</td><td>结构化填表暴露数据缺口（必填字段留空）</td></tr>
+        <tr><td>填表被绕过</td><td>Agent 自由发挥</td><td>硬检查——程序化验证拦截</td></tr>
+        <tr><td>硬检查漏网</td><td>有些错误无法程序化验证</td><td>微调+PE 的基础安全行为兜底 <span style="color:var(--accent);">&#8635; 闭环</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== EXAMPLE ===== -->
+<div class="container">
+  <div class="section">
+    <div class="section-header">
+      <h2>附：完整示例</h2>
+      <p class="lead">一个真实查询如何穿过六层防线。</p>
+    </div>
+
+    <div class="walkthrough">
+      <div class="walk-header">
+        用户："二甲双胍在 eGFR 30-45 的 2 型糖尿病患者中的安全性证据？我有个患者 eGFR 38，在考虑要不要继续用。"
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-1">L1 · 微调</div>
+        <div class="walk-body">模型权重已学过 <code>eGFR + 具体数值 + "要不要继续用"</code> 的组合 → 内置倾向：给群体证据 + 引导至人类专家，不给个体化建议。</div>
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-2">L2 · PE</div>
+        <div class="walk-body">System Prompt 标记规则：不可输出个体化用药建议、不可输出具体剂量、每个事实必须带引用。</div>
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-3">L3 · Judge</div>
+        <div class="walk-body">如果是多轮对话的第 N 轮：Judge 检测 Actor 此前的输出是否已经在向"医生角色"偏移。偏移分高则在本轮生成前拉回边界。</div>
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-4">L4 · 锚定</div>
+        <div class="walk-body">检索 PubMed: <code>"metformin safety eGFR 30-45 CKD"</code> → 返回 3 篇核心文献 + NICE/KDIGO 指南。Actor 只能基于这些原文回答，不可补充参数记忆中的信息。</div>
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-5">L5 · 填表</div>
+        <div class="walk-body">Actor 填写 Schema：<code>claim</code>="eGFR 30-45时二甲双胍应定期评估"，<code>pmid</code>="25078757"，<code>anchor_quote</code>="Metformin should be reviewed at eGFR &lt;45 and stopped at eGFR &lt;30"，<code>evidence_grade</code>="high"。</div>
+      </div>
+      <div class="walk-step">
+        <div class="walk-label clr-6">L6 · 硬检查</div>
+        <div class="walk-body">
+          PMID 25078757 → PubMed API 验证 → 存在 <span style="color:var(--green);">&#10003;</span> &nbsp;
+          anchor_quote 与检索原文 diff → 匹配 <span style="color:var(--green);">&#10003;</span> &nbsp;
+          术语 MeSH 匹配 <span style="color:var(--green);">&#10003;</span> &nbsp;
+          全部通过 → 正常输出。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="container">
+  <footer class="page-footer">
+    Agent 越界方案 &middot; 2025
+  </footer>
+</div>
+
+</body>
+</html>
