@@ -312,7 +312,7 @@
     </p>
     <p style="margin-top:12px;">
       <strong>后三层管"回答的对不对"</strong><br>
-      知识锚定到外部可溯源知识 → 结构化填表约束工具输入输出 → 硬检查做程序化兜底
+      知识锚定（评测驱动，出错率超标时启用）→ 结构化填表约束工具输入输出 → 硬检查做程序化兜底
     </p>
   </div>
 </div>
@@ -325,7 +325,7 @@
       <li><a href="#s1"><span class="toc-num bg-1">1</span>微调写入拒绝肌肉（可选）</a></li>
       <li><a href="#s2"><span class="toc-num bg-2">2</span>PE 划定任务边界</a></li>
       <li><a href="#s3"><span class="toc-num bg-3">3</span>Judge 检测人设偏移</a></li>
-      <li><a href="#s4"><span class="toc-num bg-4">4</span>知识锚定防事实幻觉</a></li>
+      <li><a href="#s4"><span class="toc-num bg-4">4</span>知识锚定（评测驱动）</a></li>
       <li><a href="#s5"><span class="toc-num bg-5">5</span>结构化填表防字段改写</a></li>
       <li><a href="#s6"><span class="toc-num bg-6">6</span>输出侧硬检查兜底</a></li>
     </ul>
@@ -335,7 +335,7 @@
 <!-- ===== LOGIC CHAIN ===== -->
 <div class="container">
   <div class="callout blue" style="margin-top:32px;">
-    <strong>逻辑链：</strong>微调先将安全边界写入权重（可选）→ PE 在运行时划定任务边界 → 但多轮对话中 PE 约束会偏移 → 所以用 Judge 实时检测人设偏移 → 即使边界内也会编造事实 → 所以知识锚定到外部可溯源知识 → 大模型自行改写字段名/值导致下游出错 → 所以结构化填表约束输入输出 → 最后输出侧硬检查做程序化兜底。
+    <strong>逻辑链：</strong>微调先将安全边界写入权重（可选）→ PE 在运行时划定任务边界 → 但多轮对话中 PE 约束会偏移 → 所以用 Judge 实时检测人设偏移 → 通过评测发现模型在特定任务上出错率超标 → 所以对这些任务做知识锚定 → 大模型自行改写字段名/值导致下游出错 → 所以结构化填表约束输入输出 → 最后输出侧硬检查做程序化兜底。
   </div>
 </div>
 
@@ -559,12 +559,12 @@
   <div class="section" id="s4">
     <div class="section-header">
       <div class="section-num bg-4">4</div>
-      <h2>知识锚定——防止边界内的事实幻觉</h2>
-      <p class="lead">前三层管"该不该回答"。从这里开始管"回答的内容对不对"——即使在边界内，模型也会从参数记忆中编造数据。</p>
+      <h2>知识锚定——评测驱动，按需锚定</h2>
+      <p class="lead">前三层管"该不该回答"。从这里开始管"回答的内容对不对"。<strong>不是一刀切全部锚定</strong>——而是通过评测发现通用大模型在某些任务上的出错率高于项目预设阈值时，才对这些任务启用知识锚定。</p>
     </div>
 
     <div class="callout green">
-      <strong>核心规则：</strong>所有事实陈述必须锚定到可溯源的外部知识（无论是 Wiki 还是 RAG）。Agent 不可从参数记忆中生成事实。引用时必须使用原文片段中的数值，<strong>不可四舍五入、换算或转述</strong>。
+      <strong>触发条件：</strong>通过评测证明通用大模型在某方面任务上完成得不稳定或出错率高于项目预设的阈值时，需要对该类任务做知识锚定——将事实陈述绑定到可溯源的外部知识（Wiki / RAG），引用必须逐字，<strong>不可四舍五入、换算或转述</strong>。
     </div>
 
     <h3 style="font-size:16px; margin:24px 0 12px;">为什么"不可转述"？</h3>
@@ -802,8 +802,8 @@
         <div class="chain-dot bg-4">4</div>
         <div class="chain-content">
           <h4>知识锚定</h4>
-          <div class="chain-sub">解决边界内的事实幻觉——模型从参数记忆中编造数据</div>
-          <div class="chain-body">所有事实必须锚定到 PubMed / Cochrane / 指南等可溯源外部知识。引用必须逐字，不可四舍五入或转述。</div>
+          <div class="chain-sub">评测发现出错率超标的任务，锚定到外部可溯源知识</div>
+          <div class="chain-body">通过评测证明模型在某类任务上不稳定时，对该类任务启用知识锚定。事实必须绑定到 PubMed / Cochrane / 指南等外部知识，引用必须逐字，不可四舍五入或转述。</div>
         </div>
       </div>
       <div class="chain-step">
@@ -832,7 +832,7 @@
         <tr><td>微调覆盖不到新场景</td><td>模型面对未见过的边界场景</td><td>PE 在运行时动态设定边界</td></tr>
         <tr><td>PE 被多轮对话冲淡</td><td>模型逐渐偏离人设</td><td>Judge 实时检测偏移并拉回</td></tr>
         <tr><td>Judge 误判</td><td>偏移了但没拦住</td><td>微调中已内置的安全倾向兜底</td></tr>
-        <tr><td>在边界内编造事实</td><td>输出看似合理但数据虚假</td><td>知识锚定——没检索到就没法编</td></tr>
+        <tr><td>评测发现模型出错率超标</td><td>特定任务上编造事实</td><td>知识锚定——该类任务绑定外部知识源</td></tr>
         <tr><td>RAG 检索不全</td><td>锚定了但信息不完整</td><td>结构化填表暴露数据缺口（必填字段留空）</td></tr>
         <tr><td>填表被绕过</td><td>Agent 自由发挥</td><td>硬检查——程序化验证拦截</td></tr>
         <tr><td>硬检查漏网</td><td>有些错误无法程序化验证</td><td>微调+PE 的基础安全行为兜底 <span style="color:var(--accent);">&#8635; 闭环</span></td></tr>
@@ -867,7 +867,7 @@
       </div>
       <div class="walk-step">
         <div class="walk-label clr-4">L4 · 锚定</div>
-        <div class="walk-body">检索 PubMed: <code>"metformin safety eGFR 30-45 CKD"</code> → 返回 3 篇核心文献 + NICE/KDIGO 指南。Actor 只能基于这些原文回答，不可补充参数记忆中的信息。</div>
+        <div class="walk-body">评测显示模型在药物安全性问答上出错率超标 → 该类任务启用知识锚定。检索 PubMed: <code>"metformin safety eGFR 30-45 CKD"</code> → 返回 3 篇核心文献 + NICE/KDIGO 指南。Actor 只能基于这些原文回答。</div>
       </div>
       <div class="walk-step">
         <div class="walk-label clr-5">L5 · 填表</div>
